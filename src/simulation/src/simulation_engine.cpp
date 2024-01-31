@@ -2,6 +2,7 @@
 #include "simulation_engine.h"
 #include "simulation_engine_cu.h"
 #include "timer.h"
+#include "MsgLog.h"
 
 /*!
  * \brief Constructor
@@ -78,17 +79,32 @@ void SimulationEngine::Simulate(std::string r_start, std::string r_end)
   int end_index = beamline_->GetSize() - 1;
   if(r_end != "")
     end_index = beamline_->GetElementModelIndex(r_end);
-  if(start_index < prev_end_element_index_) 
+  if(start_index < prev_end_element_index_){
+    MsgInfo( MsgLog::Form("start index %d < prev_end %d. Reset", 
+            start_index, prev_end_element_index_));
     Reset();
+  }
   prev_end_element_index_ = end_index;
   cudaEvent_t start, stop;  
   StartTimer(&start, &stop);
   for(uint i = 0; i <= end_index; ++i)
+  {
     if (i >= start_index || (*beamline_)[i]->GetType() == "SpchComp")
     {
+      MsgDebug(1, MsgLog::Form("%s",((*beamline_)[i]->GetName()).c_str()));
+      //std::cout << (*beamline_)[i]->GetName() << std::endl;
       UpdateBlIndex(i);
       (*beamline_)[i]->Accept(this);
+
+      // abort if no particle left
+      beam_->UpdateGoodParticleCount();
+      if (beam_->GetGoodParticleNum()==0){
+        MsgWarning(MsgLog::Form("no particle left after %s",
+                                ((*beamline_)[i]->GetName()).c_str()));
+        break;
+      }
     }
+  }
   StopTimer(&start, &stop, "Whole simulation");
   if(param_.graphics_on)
     beam_->UpdateStatForPlotting();

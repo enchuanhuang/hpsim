@@ -13,6 +13,7 @@
 #include "rfgap_parameter.h"
 #include "dipole_parameter.h"
 #include "timer.h"
+#include "MsgLog.h"
 
 extern "C"
 {
@@ -33,18 +34,26 @@ namespace
   uint loss_num;
   void Update2DPlotData()
   {
+    //MsgDebug(1, "starts");
+    MsgDebug(1, MsgLog::Form("monitor_num = %d",monitor_num));
+    MsgDebug(1, MsgLog::Form("loss_num = %d",loss_num));
     beam_tmp->UpdateLoss();
     double loss_local_h = beam_tmp->GetLossNum() - loss_num;
     loss_num += loss_local_h;
     loss_local_h /= beam_tmp->num_particle;
     loss_local_h = std::log10(loss_local_h + 1e-6);
+    MsgDebug(1, MsgLog::Form("loss_num = %d",loss_num));
     double loss_ratio_h = (double)loss_num / beam_tmp->num_particle;
     cudaMemcpyAsync((param->plot_data->loss_local).d_ptr + monitor_num, 
-      &loss_local_h, sizeof(double), cudaMemcpyHostToDevice, 0);
+                    &loss_local_h, sizeof(double), cudaMemcpyHostToDevice, 0);
     cudaMemcpyAsync((param->plot_data->loss_ratio).d_ptr + monitor_num, 
-      &loss_ratio_h, sizeof(double), cudaMemcpyHostToDevice, 0);
+                    &loss_ratio_h, sizeof(double), cudaMemcpyHostToDevice, 0);
     beam_tmp->UpdateEmittance();
 
+    // save current model_index as well
+    double cur_id_double = double(cur_id);
+    cudaMemcpyAsync((param->plot_data->model_index).d_ptr + monitor_num, 
+      &cur_id_double, sizeof(double), cudaMemcpyHostToDevice, 0);
     cudaMemcpyAsync((param->plot_data->xavg).d_ptr + monitor_num, 
       beam_tmp->x_avg, sizeof(double), cudaMemcpyDeviceToDevice, 0);
     cudaMemcpyAsync((param->plot_data->xsig).d_ptr + monitor_num, 
@@ -74,11 +83,17 @@ namespace
     cudaMemcpyAsync((param->plot_data->zemit).d_ptr + monitor_num, 
       beam_tmp->z_emit, sizeof(double), cudaMemcpyDeviceToDevice, 0);
 
-    double w_avg = beam_tmp->GetAvgW() - beam_tmp->GetRefEnergy();
+    double w_ref = beam_tmp->GetRefEnergy();
+    double w_avg = beam_tmp->GetAvgW() - w_ref;
+    double phi_ref = beam_tmp->GetRefPhase();
     cudaMemcpy((param->plot_data->wavg).d_ptr + monitor_num, &w_avg, 
       sizeof(double), cudaMemcpyHostToDevice);
-
+    cudaMemcpy((param->plot_data->wref).d_ptr + monitor_num, &w_ref, 
+      sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy((param->plot_data->phiref).d_ptr + monitor_num, &w_ref, 
+      sizeof(double), cudaMemcpyHostToDevice);
     ++monitor_num;
+
   }
 }
 
@@ -100,6 +115,7 @@ void UpdateBlIndex(uint i)
 
 void Reset()
 {
+  MsgInfo("Reset Simulation variables");
   cur_id = 0;
   ccl_cell_num = 0;
   monitor_num = 0;
@@ -129,18 +145,30 @@ void SimulateDrift(Drift* r_drift)
   if(param->space_charge_on)
     num_spch_kicks = std::ceil(length / spch_tmp->GetInterval());
   double hf_spch_len = 0.5 * length / num_spch_kicks;
+  double hf_length = length / 2.;
+  double tot_length = 0.;
+  bool plot_updated = false;
   for(int nk = 0; nk < num_spch_kicks; ++nk)
   {
     SimulatePartialDriftKernel<<<grid_size, blck_size>>>(beam_tmp->x, 
       beam_tmp->y, beam_tmp->phi, beam_tmp->xp, beam_tmp->yp, beam_tmp->w, 
       beam_tmp->loss, hf_spch_len, r_drift->GetAperture(), cur_id);
-
+    tot_length += hf_spch_len;
     if(param->space_charge_on)
       spch_tmp->Start(beam_tmp, 2.0 * hf_spch_len); 
+    
+    // update plot when drift pass the half length.
+    if((plot_updated==false) && (tot_length>=hf_length) && 
+       (param->graphics_on) && (r_drift->IsMonitorOn())){
+      Update2DPlotData();
+      plot_updated = true;
+    }
 
     SimulatePartialDriftKernel<<<grid_size, blck_size>>>(beam_tmp->x, 
       beam_tmp->y, beam_tmp->phi, beam_tmp->xp, beam_tmp->yp, beam_tmp->w, 
       beam_tmp->loss, hf_spch_len, r_drift->GetAperture(), cur_id);
+    tot_length += hf_spch_len;
+
   } // for
 }
 
@@ -150,10 +178,14 @@ void SimulateQuad(Quad* r_quad)
     beam_tmp->y, beam_tmp->phi, beam_tmp->xp, beam_tmp->yp, beam_tmp->w, 
     beam_tmp->loss, r_quad->GetLength(), r_quad->GetAperture(), 
     r_quad->GetGradient(), cur_id);
-  if(param->graphics_on && r_quad->IsMonitorOn())
-    Update2DPlotData();
+
   if(param->space_charge_on)
     spch_tmp->Start(beam_tmp, r_quad->GetLength()); 
+
+  if(param->graphics_on && r_quad->IsMonitorOn()){
+    Update2DPlotData();
+  }
+
   SimulateHalfQuadKernel<<<grid_size, blck_size / 2>>>(beam_tmp->x, 
     beam_tmp->y, beam_tmp->phi, beam_tmp->xp, beam_tmp->yp, beam_tmp->w, 
     beam_tmp->loss, r_quad->GetLength(), r_quad->GetAperture(), 
@@ -313,6 +345,10 @@ void SimulateApertureCircular(ApertureCircular* r_aper)
   SimulateCircularApertureKernel<<<grid_size, blck_size>>>(beam_tmp->x, 
       beam_tmp->y, beam_tmp->loss, r_aper->GetAperture(), 
       beam_tmp->x_avg, beam_tmp->y_avg, cur_id);
+
+  if(param->graphics_on && r_aper->IsMonitorOn()){
+    Update2DPlotData();
+  }
 }
 
 void SimulateApertureRectangular(ApertureRectangular* r_aper)
@@ -326,12 +362,17 @@ void SimulateApertureRectangular(ApertureRectangular* r_aper)
     r_aper->GetApertureXRight(), r_aper->GetApertureYTop(), 
     r_aper->GetApertureYBottom(),
     beam_tmp->x_avg, beam_tmp->y_avg, cur_id);
+
+  if(param->graphics_on && r_aper->IsMonitorOn()){
+    Update2DPlotData();
+  }
 }
 
 void SimulateDiagnostics(Diagnostics* r_diag)
 {
-  if(param->graphics_on && r_diag->IsMonitorOn())
+  if(param->graphics_on && r_diag->IsMonitorOn()){
     Update2DPlotData();
+  }
 }
 
 void SimulateSteerer(Steerer* r_steerer)
@@ -341,6 +382,10 @@ void SimulateSteerer(Steerer* r_steerer)
   if ( blh > 1e-10 || blv > 1e-10) 
     SimulateSteererKernel<<<grid_size, blck_size>>>(beam_tmp->xp, 
       beam_tmp->yp, beam_tmp->w, beam_tmp->loss, blh, blv);
+  
+  if(param->graphics_on && r_steerer->IsMonitorOn()){
+    Update2DPlotData();
+  }
 }
 
 void SimulateBuncher(Buncher* r_buncher)
@@ -366,7 +411,12 @@ void SimulateDipole(Dipole* r_dipole)
     beam_tmp->y, beam_tmp->phi, beam_tmp->xp, beam_tmp->yp, beam_tmp->w, 
     beam_tmp->loss, dpparam);
   if(param->space_charge_on)
-    spch_tmp->Start(beam_tmp, r_dipole->GetRadius()*r_dipole->GetAngle()); 
+    spch_tmp->Start(beam_tmp, r_dipole->GetRadius()*r_dipole->GetAngle());
+  
+  if(param->graphics_on && r_dipole->IsMonitorOn()){
+    Update2DPlotData();
+  }
+   
   SimulateSecondHalfDipoleKernel<<<grid_size, blck_size / 4>>>(beam_tmp->x, 
     beam_tmp->y, beam_tmp->phi, beam_tmp->xp, beam_tmp->yp, beam_tmp->w, 
     beam_tmp->loss, dpparam);

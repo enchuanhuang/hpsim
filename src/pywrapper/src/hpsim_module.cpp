@@ -10,6 +10,7 @@
 #include "wrap_simulator.h"
 #include "wrap_dbconnection.h"
 #include "wrap_spacecharge.h"
+#include "wrap_plotdata.h"
 #include "hpsim_module.h"
 #include "sql_utility.h"
 #include "cppclass_object.h"
@@ -17,7 +18,7 @@
 #include "pv_observer_list.h"
 #include "init.h"
 #include "init_pv_observer_list.h"
-
+#include "MsgLog.h"
 
 #ifdef _cplusplus
 extern "C" {
@@ -49,6 +50,45 @@ static PyObject* SetGPU(PyObject* self, PyObject* args)
   return Py_None;
 }
 
+
+PyDoc_STRVAR(set_log_level__doc__,
+"set_log_level(device_id) ->\n\n"
+"Set logging level. `fatal`=0, `error`=1, `warning`=2,`info`=3,`debug`=4"
+);
+static PyObject* SetLogLevel(PyObject* self, PyObject* args)
+{
+  int loglevel;
+  if(!PyArg_ParseTuple(args, "i", &loglevel))
+  {
+    std::cerr << "set_log_level needs a log level"
+              << "(fatal=0, error, warning, info, debug!" << std::endl;
+    return NULL;
+  }
+  MsgLog::SetGlobalLogLevel(static_cast<MsgLog::EType>(loglevel));  
+  MsgInfo("Logging level is set at " + MsgLog::GetGlobalLogLevelString()+"\n");
+  Py_INCREF(Py_None);
+  return Py_None;
+}
+
+PyDoc_STRVAR(set_debug_level__doc__,
+"set_debug_level(device_id) ->\n\n"
+"Set debug level. Higher level has more details."
+);
+static PyObject* SetDebugLevel(PyObject* self, PyObject* args)
+{
+  int level;
+  if(!PyArg_ParseTuple(args, "i", &level))
+  {
+    std::cerr << "set debug level." << std::endl;
+    return NULL;
+  }
+  MsgLog::SetGlobalDebugLevel(level);  
+  MsgInfo(MsgLog::Form("Debug level is set at %d\n",
+                        MsgLog::GetGlobalDebugLevel()));
+  Py_INCREF(Py_None);
+  return Py_None;
+}
+
 PyDoc_STRVAR(set_db_epics__doc__,
 "set_db_epics(pv_name, value, DBConnection, BeamLine) ->\n\n"
 "Set the epics channel (PV) value."
@@ -63,7 +103,7 @@ static PyObject* SetDbEPICS(PyObject* self, PyObject* args)
     std::cerr << "set_db_epics() needs a pv, a value, a db connection,and a beamline as args!" << std::endl;
     return NULL;
   }
-  std::cout << "set_db_epics(): pv = " << std::string(pv) << ", value = " << value << std::endl;
+  MsgInfo(MsgLog::Form("setting %s to %s", pv, value));
   PyObject* py_beamline_type = getHPSimType("BeamLine");
   PyObject* py_dbconnection_type = getHPSimType("DBConnection");
   if(PyObject_IsInstance(py_beamline, py_beamline_type) && 
@@ -295,7 +335,8 @@ static PyObject* GetDbEPICS(PyObject* self, PyObject* args)
       {
         std::string value_str;
         value_str = value_trpl[0];
-        return PyString_FromString(value_str.c_str());
+        //return PyString_FromString(value_str.c_str());
+        return PyUnicode_FromString(value_str.c_str()); // python 3.7
       }
     }// for dbs_indx
     std::cerr << "Error in get_db_epics : can't find pv: " << pv_name << ", or this record has a NULL value " << std::endl;  
@@ -346,8 +387,10 @@ static PyObject* GetDbModel(PyObject* self, PyObject* args)
             (dbconn->dbs)[dbs_indx] + "." + tbl_names[saindx] + 
             " where name = '" + std::string(record_name) + "'";
           std::string value_str = GetDataFromDB(dbconn->db_conn, sql.c_str());
-          if(value_str != "")
-            return PyString_FromString(value_str.c_str());            
+          if(value_str != ""){
+            //return PyString_FromString(value_str.c_str());            
+            return PyUnicode_FromString(value_str.c_str());  // python 3.7
+          }
           else
             saindx++;
         }
@@ -401,19 +444,48 @@ static PyMethodDef HPSimModuleMethods[]={
   {"set_db_model", (PyCFunction)SetDbModel, METH_VARARGS, set_db_model__doc__}, 
   {"get_db_epics", (PyCFunction)GetDbEPICS, METH_VARARGS, get_db_epics__doc__}, 
   {"get_db_model", (PyCFunction)GetDbModel, METH_VARARGS, get_db_model__doc__}, 
+  {"set_log_level", (PyCFunction)SetLogLevel, METH_VARARGS, get_db_model__doc__}, 
+  {"set_debug_level", (PyCFunction)SetDebugLevel, METH_VARARGS, get_db_model__doc__}, 
   //{"get_element_list", (PyCFunction)GetElementList, METH_VARARGS|METH_KEYWORDS, get_element_list__doc__}, 
   {NULL}
 };
 
-PyMODINIT_FUNC initHPSim()
+// EC: added for python3.7
+static struct PyModuleDef HPSimModuleDef = {
+    PyModuleDef_HEAD_INIT,
+    "HPSim", /* m_name */
+    "python package for a GPU-accelerated multi-particle beam dynamics simulation tool for ion linacs",      /* m_doc */
+    -1,                  /* m_size */
+    HPSimModuleMethods,  /* m_methods */
+    NULL,                /* m_reload */
+    NULL,                /* m_traverse */
+    NULL,                /* m_clear */
+    NULL,                /* m_free */
+  };
+
+
+PyMODINIT_FUNC PyInit_HPSim()
 {
-  PyObject* module = Py_InitModule("HPSim", HPSimModuleMethods);
+  // python 2.7 version. Modified according to http://python3porting.com/cextensions.html
+  //PyObject* module = Py_InitModule3("HPSim", HPSimModuleMethods, 
+  //                   "python package for a GPU-accelerated multi-particle beam dynamics simulation tool for ion linacs");
+  PyObject* module = PyModule_Create(&HPSimModuleDef);
+  if(module == NULL){
+    return NULL;
+  }
+  // dealing with logging
+  MsgLog::SetPrintType(MsgLog::kInfo, false);
+  MsgLog::SetPrintPrefix(MsgLog::kInfo, false);
+  MsgLog::SetPrintRepetitions(true);
+
   import_array();
   initBeam(module);
   initDBConnection(module);
   initBeamLine(module);
   initSimulator(module);
   initSpaceCharge(module);
+  initPlotData(module);
+  return module;
 }
 
 PyObject* getHPSimType(char* name)

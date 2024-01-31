@@ -1,5 +1,6 @@
 #include <iostream>
 #include "timer.h"
+#include "MsgLog.h"
 
 void StartTimer(cudaEvent_t* r_start, cudaEvent_t* r_stop)
 {
@@ -13,7 +14,8 @@ void StopTimer(cudaEvent_t* r_start, cudaEvent_t* r_stop, std::string r_msg)
   cudaEventSynchronize(*r_stop);
   float elapst;
   cudaEventElapsedTime(&elapst, *r_start, *r_stop);
-  std::cout << r_msg << " time: " << elapst / 1000 << " [sec]" << std::endl;
+  MsgInfo(MsgLog::Form("%s %.4f [sec]\n", r_msg.c_str(), elapst/1000));
+  //std::cout << r_msg << " time: " << elapst / 1000 << " [sec]" << std::endl;
   cudaEventDestroy(*r_start);
   cudaEventDestroy(*r_stop);
 }

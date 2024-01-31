@@ -17,8 +17,16 @@ struct BeamLine : public PyWrapper
   uint GetElementModelIndex(std::string) const 
       throw(BeamLineElementNotFoundException);
   std::string GetElementName(uint) const;
+  double GetBeamTravelLengthElement(std::string element) const;
+  double GetBeamTravelLengthRange(std::string r_begin="", std::string r_end="") const;
   std::vector<std::string> GetElementNames(std::string r_begin = "", 
       std::string r_end = "", std::string r_type = "") const;
+  std::vector<std::string> GetElementTypes(std::string r_begin = "", 
+      std::string r_end = "") const;    
+  std::vector<uint> GetElementModelIndices(std::string r_begin = "", 
+      std::string r_end = "", std::string r_type = "") const;
+  std::vector<double>  GetBeamTravelLengthElements(std::string r_begin = "", 
+      std::string r_end = "") const;
   uint GetNumOfMonitors(std::string r_begin = "", std::string r_end = "") const;
   std::vector<uint> GetMonitoredElementsIndices(std::string r_begin = "", 
       std::string r_end = "") const;

@@ -14,6 +14,7 @@ public:
   std::string GetName() const;
   std::string GetType() const;
   double GetLength() const;
+  virtual double GetBeamTravelLength() const;
   double GetAperture() const;
   bool IsMonitorOn() const;
   void SetType(std::string);
@@ -126,6 +127,7 @@ public:
   double GetEdgeAngleIn() const;
   double GetEdgeAngleOut() const;
   double GetKineticEnergy() const;
+  double GetBeamTravelLength() const;
   void SetRadius(double);
   void SetAngle(double);
   void SetEdgeAngleIn(double);
@@ -276,6 +278,12 @@ std::string BeamLineElement::GetType() const
 
 inline
 double BeamLineElement::GetLength() const
+{
+  return length_;
+}
+
+inline
+double BeamLineElement::GetBeamTravelLength() const
 {
   return length_;
 }
@@ -523,6 +531,13 @@ inline
 double Dipole::GetAngle() const
 {
   return param_h_->angle;
+}
+
+inline
+double Dipole::GetBeamTravelLength() const
+{
+  // nominal length: r*theta
+  return param_h_->angle * param_h_->radius;
 }
 
 inline

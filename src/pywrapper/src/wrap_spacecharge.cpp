@@ -56,7 +56,9 @@ static int SpaceChargeInit(CPPClassObject* self, PyObject* args, PyObject* kwds)
 static void SpaceChargeDel(CPPClassObject* self)
 {
   delete (SpaceCharge*)(self->cpp_obj);
-  self->ob_type->tp_free((PyObject*) self);
+  //self->ob_type->tp_free((PyObject*) self);
+  Py_TYPE(self)->tp_free((PyObject*) self); // EC: py37
+
 }
 
 PyDoc_STRVAR(set_mesh_size__doc__,
@@ -266,8 +268,7 @@ static PyMemberDef SpaceChargeMembers[] = {
 };
 
 static PyTypeObject SpaceCharge_Type = {
-    PyObject_HEAD_INIT(NULL)
-    0, /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL,0)
     "SpaceCharge", /*tp_name*/
     sizeof(CPPClassObject), /*tp_basicsize*/
     0, /*tp_itemsize*/
@@ -309,9 +310,12 @@ static PyTypeObject SpaceCharge_Type = {
 
 PyMODINIT_FUNC initSpaceCharge(PyObject* module)
 {
-  if(PyType_Ready(&SpaceCharge_Type) < 0) return;
+  if(PyType_Ready(&SpaceCharge_Type) < 0){
+     return NULL;
+  }
   Py_INCREF(&SpaceCharge_Type);
   PyModule_AddObject(module, "SpaceCharge", (PyObject*)&SpaceCharge_Type);
+  return module;
 }
 
 

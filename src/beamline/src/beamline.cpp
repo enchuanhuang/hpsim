@@ -101,8 +101,9 @@ uint BeamLine::GetNumOfMonitors(std::string r_begin, std::string r_end) const
     ide = GetElementModelIndex(r_end);
   uint cnt = 0;
   for (uint i = idb; i <= ide; ++i)
-    if (bl[i]->IsMonitorOn()) 
+    if (bl[i]->IsMonitorOn()){ 
       ++cnt;
+    }
   return cnt;
 }       
 
@@ -189,4 +190,92 @@ std::vector<std::string> BeamLine::GetElementNames(std::string r_start,
         rlt.push_back(GetElementName(i));
   }
   return rlt;
+}
+
+std::vector<std::string> BeamLine::GetElementTypes(std::string r_start, 
+  std::string r_end) const
+{
+  std::vector<std::string> rlt;
+  int start_index = 0;
+  if(r_start != "")
+    start_index = GetElementModelIndex(r_start);
+  int end_index = GetSize() - 1;
+  if(r_end != "")
+    end_index = GetElementModelIndex(r_end);
+  for(uint i = start_index; i <= end_index; ++i)
+    rlt.push_back(bl[i]->GetType());
+  return rlt;
+}
+
+std::vector<uint> BeamLine::GetElementModelIndices(std::string r_start, 
+  std::string r_end, std::string r_type) const
+{
+  std::vector<uint> rlt;
+  int start_index = 0;
+  if(r_start != "")
+    start_index = GetElementModelIndex(r_start);
+  int end_index = GetSize() - 1;
+  if(r_end != "")
+    end_index = GetElementModelIndex(r_end);
+  if(r_type == "")
+  {
+    for(uint i = start_index; i <= end_index; ++i)
+      rlt.push_back(i);
+  }
+  else
+  {
+    for(uint i = start_index; i <= end_index; ++i)
+      if(bl[i]->GetType() == r_type)
+        rlt.push_back(i);
+  }
+  return rlt;
+}
+
+
+/*!
+ * \brief Get the nominal beam travel length for the element.
+ * \param element Name of the element
+ */
+double BeamLine::GetBeamTravelLengthElement(std::string element) const
+{
+  // beam travel nominal length for the element
+  int index = 0;
+  index = GetElementModelIndex(element);
+  return bl[index]->GetBeamTravelLength();
+}
+
+std::vector<double> BeamLine::GetBeamTravelLengthElements(std::string r_begin, std::string r_end) const
+{
+    // beam travel nominal length from start to end
+  int start_index = 0;
+  int end_index = GetSize() - 1;
+  std::vector<double> lengths;
+  if(r_begin != "") start_index = GetElementModelIndex(r_begin);
+  if(r_end != "") end_index = GetElementModelIndex(r_end);
+
+  for(uint i = start_index; i <= end_index; ++i){
+    lengths.push_back(bl[i]->GetBeamTravelLength());
+  }
+  return lengths; 
+}
+
+/*!
+ * \brief Get the nominal beam travel length between start and end.
+ * \param r_begin Name of the first element in range
+ * \param r_end Name of the last element in range
+ */
+double BeamLine::GetBeamTravelLengthRange(std::string r_begin, std::string r_end) const
+{
+  // beam travel nominal length from start to end
+  int start_index = 0;
+  int end_index = GetSize() - 1;
+  double total_length = 0;
+  if(r_begin != "") start_index = GetElementModelIndex(r_begin);
+  if(r_end != "") end_index = GetElementModelIndex(r_end);
+
+  for(uint i = start_index; i <= end_index; ++i)
+    total_length += bl[i]->GetBeamTravelLength();
+
+  return total_length; 
+
 }

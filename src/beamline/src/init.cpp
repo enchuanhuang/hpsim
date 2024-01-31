@@ -406,7 +406,7 @@ void GenerateBeamLine(BeamLine& r_linac, DBConnection* r_db_conn)
       {
         Steerer* elem = new Steerer(name);
         sql = "select bl_h_model from " + dbs[dbs_indx] + 
-	  ".steerer where view_index = " + view_index;
+	    ".steerer where view_index = " + view_index;
         tmp = GetDataFromDB(db_conn, sql.c_str());
         elem->SetIntegratedFieldHorizontal(std::atof(tmp.c_str()));
         sql = "select bl_v_model from " + dbs[dbs_indx] + 

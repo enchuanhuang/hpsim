@@ -4,10 +4,12 @@
 #include <vector>
 #include <cuda.h>
 #include <cuda_runtime_api.h>
+#include "py_wrapper.h"
 
 template<typename T>
-struct PlotDataMember
+class PlotDataMember: public PyWrapper
 {
+public:
   PlotDataMember() : size(0), d_ptr(NULL){}
   PlotDataMember(int r_sz) : size(r_sz)
   {
@@ -43,12 +45,15 @@ struct PlotDataMember
 /*!
  * \brief Data to be plotted in online model with 2D graphics
  */
-struct PlotData
+class PlotData: public PyWrapper
 {
+public:
   PlotData();
   PlotData(int);
   void Resize(int r_sz);
+  void Reset();
   int data_size;
+  PlotDataMember<double> model_index;
   PlotDataMember<double> xavg;
   PlotDataMember<double> xsig;
   PlotDataMember<double> xpavg;
@@ -61,8 +66,10 @@ struct PlotData
   PlotDataMember<double> yemit;
   PlotDataMember<double> phiavg;
   PlotDataMember<double> phisig;
+  PlotDataMember<double> phiref;
   PlotDataMember<double> wavg;
   PlotDataMember<double> wsig;
+  PlotDataMember<double> wref;
   PlotDataMember<double> zemit;
   PlotDataMember<double> loss_ratio;
   PlotDataMember<double> loss_local;

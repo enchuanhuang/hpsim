@@ -6,10 +6,19 @@
 #include "wrap_beam.h"
 #include "beam.h"
 #include "cppclass_object.h"
+#include "MsgLog.h"
 
 #ifdef _cplusplus
 extern "C" {
 #endif
+
+/*
+Taken from https://numpy.org/devdocs/user/c-info.how-to-extend.html
+Originally we are using Py_BuildValue("O", lst) to return a new array.
+However, it creates a new reference to the object. We should be using
+Py_BuildValue("N", lst);
+*/
+
 
 static PyObject* BeamNew(PyTypeObject* type, PyObject* args, PyObject* kwds)
 {
@@ -51,8 +60,10 @@ static int BeamInit(CPPClassObject* self, PyObject* args, PyObject* kwds)
 
 static void BeamDel(CPPClassObject* self)
 {
+  //Py_XDECREF(self->cpp_obj); //EC: Do I need this? FIXME
   delete (Beam*)(self->cpp_obj);
-  self->ob_type->tp_free((PyObject*) self);
+  //self->ob_type->tp_free((PyObject*) self);
+  Py_TYPE(self)->tp_free((PyObject*) self);
 }
 
 PyDoc_STRVAR(set_distribution__doc__,
@@ -102,14 +113,14 @@ static PyObject* BeamSetDistribution(PyObject* self, PyObject* args)
   {
     loss_c.resize(len, 0);
     for(int i = 0; i < PyList_Size(x); ++i) 
-      loss_c[i] = (uint) PyInt_AsLong(PyList_GetItem(loss, i)); 
+      loss_c[i] = (uint) PyLong_AsLong(PyList_GetItem(loss, i)); //py3.7 move from PyInt_AsLong to PyLong_AsLong
     loss_ptr = &loss_c;
   }
   if(lloss != NULL)
   {
     lloss_c.resize(len, 0);
     for(int i = 0; i < PyList_Size(x); ++i) 
-      lloss_c[i] = (uint) PyInt_AsLong(PyList_GetItem(loss, i)); 
+      lloss_c[i] = (uint) PyLong_AsLong(PyList_GetItem(loss, i)); //py3.7 updated.
     lloss_ptr = &lloss_c;
   }
   beam->InitBeamFromDistribution(x_c, xp_c, y_c, yp_c, phi_c, w_c, loss_ptr, lloss_ptr);
@@ -232,6 +243,10 @@ static PyObject* BeamRestoreIntermediate(PyObject* self, PyObject* args)
   return Py_None;
 }
 
+PyDoc_STRVAR(print_simple__doc__,
+"print_simple() -> \n\n"
+"print basic beam information."
+);
 static PyObject* BeamPrintSimple(PyObject* self, PyObject* args)
 {
   CPPClassObject* cppclass_obj = (CPPClassObject*)self;
@@ -464,12 +479,12 @@ static PyObject* BeamGetX(PyObject* self, PyObject* args)
   else 
     arr_sz = loss_num;
 
-  int dim[1];
+  npy_intp dim[1];
   dim[0] = arr_sz;
-  PyArrayObject* lst = (PyArrayObject*)PyArray_FromDims(1, dim, NPY_DOUBLE);
+  PyArrayObject* lst = (PyArrayObject*)PyArray_SimpleNew(1, dim, NPY_DOUBLE);
   if(lst == NULL)
   {
-    std::cerr << "Beam::get_x() error: PyArray_FromDims() failed to create a numpy array!" << std::endl;
+    std::cerr << "Beam::get_x() error: PyArray_SimpleNew() failed to create a numpy array!" << std::endl;
     return NULL;
   }
   
@@ -498,7 +513,7 @@ static PyObject* BeamGetX(PyObject* self, PyObject* args)
     delete [] xarr;
     delete [] larr; 
   }
-  return Py_BuildValue("O", lst);
+  return Py_BuildValue("N", lst);
 }
 
 PyDoc_STRVAR(get_xp__doc__,
@@ -532,12 +547,12 @@ static PyObject* BeamGetXp(PyObject* self, PyObject* args)
   else 
     arr_sz = loss_num;
 
-  int dim[1];
+  npy_intp dim[1];
   dim[0] = arr_sz;
-  PyArrayObject* lst = (PyArrayObject*)PyArray_FromDims(1, dim, NPY_DOUBLE);
+  PyArrayObject* lst = (PyArrayObject*)PyArray_SimpleNew(1, dim, NPY_DOUBLE);
   if(lst == NULL)
   {
-    std::cerr << "Beam::get_xp() error: PyArray_FromDims() failed to create a numpy array!" << std::endl;
+    std::cerr << "Beam::get_xp() error: PyArray_SimpleNew() failed to create a numpy array!" << std::endl;
     return NULL;
   }
   
@@ -566,7 +581,7 @@ static PyObject* BeamGetXp(PyObject* self, PyObject* args)
     delete [] xarr;
     delete [] larr; 
   }
-  return Py_BuildValue("O", lst);
+  return Py_BuildValue("N", lst);
 }
 
 PyDoc_STRVAR(get_y__doc__,
@@ -600,12 +615,12 @@ static PyObject* BeamGetY(PyObject* self, PyObject* args)
   else 
     arr_sz = loss_num;
 
-  int dim[1];
+  npy_intp dim[1];
   dim[0] = arr_sz;
-  PyArrayObject* lst = (PyArrayObject*)PyArray_FromDims(1, dim, NPY_DOUBLE);
+  PyArrayObject* lst = (PyArrayObject*)PyArray_SimpleNew(1, dim, NPY_DOUBLE);
   if(lst == NULL)
   {
-    std::cerr << "Beam::get_y() error: PyArray_FromDims() failed to create a numpy array!" << std::endl;
+    std::cerr << "Beam::get_y() error: PyArray_SimpleNew() failed to create a numpy array!" << std::endl;
     return NULL;
   }
   
@@ -634,7 +649,7 @@ static PyObject* BeamGetY(PyObject* self, PyObject* args)
     delete [] xarr;
     delete [] larr; 
   }
-  return Py_BuildValue("O", lst);
+  return Py_BuildValue("N", lst);
 }
 
 PyDoc_STRVAR(get_yp__doc__,
@@ -668,12 +683,12 @@ static PyObject* BeamGetYp(PyObject* self, PyObject* args)
   else 
     arr_sz = loss_num;
 
-  int dim[1];
+  npy_intp dim[1];
   dim[0] = arr_sz;
-  PyArrayObject* lst = (PyArrayObject*)PyArray_FromDims(1, dim, NPY_DOUBLE);
+  PyArrayObject* lst = (PyArrayObject*)PyArray_SimpleNew(1, dim, NPY_DOUBLE);
   if(lst == NULL)
   {
-    std::cerr << "Beam::get_yp() error: PyArray_FromDims() failed to create a numpy array!" << std::endl;
+    std::cerr << "Beam::get_yp() error: PyArray_SimpleNew() failed to create a numpy array!" << std::endl;
     return NULL;
   }
   
@@ -702,7 +717,7 @@ static PyObject* BeamGetYp(PyObject* self, PyObject* args)
     delete [] xarr;
     delete [] larr; 
   }
-  return Py_BuildValue("O", lst);
+  return Py_BuildValue("N", lst);
 }
 
 PyDoc_STRVAR(get_phi__doc__,
@@ -745,12 +760,12 @@ static PyObject* BeamGetPhi(PyObject* self, PyObject* args)
     arr_sz = all_num - loss_num;
   else 
     arr_sz = loss_num;
-  int dim[1];
+  npy_intp dim[1];
   dim[0] = arr_sz;
-  PyArrayObject* lst = (PyArrayObject*)PyArray_FromDims(1, dim, NPY_DOUBLE);
+  PyArrayObject* lst = (PyArrayObject*)PyArray_SimpleNew(1, dim, NPY_DOUBLE);
   if(lst == NULL)
   {
-    std::cerr << "Beam::get_phi() error: PyArray_FromDims() failed to create a numpy array!" << std::endl;
+    std::cerr << "Beam::get_phi() error: PyArray_SimpleNew() failed to create a numpy array!" << std::endl;
     return NULL;
   }
   
@@ -790,7 +805,7 @@ static PyObject* BeamGetPhi(PyObject* self, PyObject* args)
     delete [] xarr;
     delete [] larr; 
   }
-  return Py_BuildValue("O", lst);
+  return Py_BuildValue("N", lst);
 }
 
 PyDoc_STRVAR(get_w__doc__,
@@ -824,12 +839,12 @@ static PyObject* BeamGetW(PyObject* self, PyObject* args)
   else 
     arr_sz = loss_num;
 
-  int dim[1];
+  npy_intp dim[1];
   dim[0] = arr_sz;
-  PyArrayObject* lst = (PyArrayObject*)PyArray_FromDims(1, dim, NPY_DOUBLE);
+  PyArrayObject* lst = (PyArrayObject*)PyArray_SimpleNew(1, dim, NPY_DOUBLE);
   if(lst == NULL)
   {
-    std::cerr << "Beam::get_w() error: PyArray_FromDims() failed to create a numpy array!" << std::endl;
+    std::cerr << "Beam::get_w() error: PyArray_SimpleNew() failed to create a numpy array!" << std::endl;
     return NULL;
   }
   
@@ -858,7 +873,7 @@ static PyObject* BeamGetW(PyObject* self, PyObject* args)
     delete [] xarr;
     delete [] larr; 
   }
-  return Py_BuildValue("O", lst);
+  return Py_BuildValue("N", lst);
 }
 
 PyDoc_STRVAR(get_losses__doc__,
@@ -882,12 +897,12 @@ static PyObject* BeamGetLoss(PyObject* self, PyObject* args)
   CPPClassObject* cppclass_obj = (CPPClassObject*)self;
   Beam* beam = (Beam*)(cppclass_obj->cpp_obj); 
   uint arr_sz = beam->num_particle;
-  int dim[1];
+  npy_intp dim[1];
   dim[0] = arr_sz;
-  PyArrayObject* lst = (PyArrayObject*)PyArray_FromDims(1, dim, NPY_UINT);
+  PyArrayObject* lst = (PyArrayObject*)PyArray_SimpleNew(1, dim, NPY_UINT);
   if(lst == NULL)
   {
-    std::cerr << "Beam::get_losses() error: PyArray_FromDims() failed to create a numpy array!" << std::endl;
+    std::cerr << "Beam::get_losses() error: PyArray_SimpleNew() failed to create a numpy array!" << std::endl;
     return NULL;
   }
   uint* lstdata = (uint*)lst->data;
@@ -901,7 +916,7 @@ static PyObject* BeamGetLoss(PyObject* self, PyObject* args)
     beam->UpdateLongitudinalLoss();
     beam->GetLongitudinalLoss(lstdata);
   }
-  return Py_BuildValue("O", lst);
+  return Py_BuildValue("N", lst);
 }
 
 PyDoc_STRVAR(get_avg_x__doc__,
@@ -1057,7 +1072,7 @@ static PyObject* BeamGetSigX(PyObject* self, PyObject* args)
     return NULL;
   }
   std::string option_str = std::string(option);
-  
+
   CPPClassObject* cppclass_obj = (CPPClassObject*)self;
   Beam* beam = (Beam*)(cppclass_obj->cpp_obj); 
   beam->UpdateLoss();
@@ -1392,6 +1407,7 @@ static PyMethodDef BeamMethods[] = {
   {"save_intermediate_beam", BeamSaveIntermediate, METH_VARARGS, save_intermediate_beam__doc__},
   {"restore_initial_beam", BeamRestoreInitial, METH_VARARGS, restore_initial_beam__doc__},
   {"restore_intermediate_beam", BeamRestoreIntermediate, METH_VARARGS, restore_intermediate_beam__doc__},
+  {"print_simple", BeamPrintSimple, METH_VARARGS, print_simple__doc__},
   {"print_to", BeamPrintTo, METH_VARARGS, print_to__doc__},
   {"set_ref_w", BeamSetRefEnergy, METH_VARARGS, set_ref_w__doc__},
   {"set_ref_phi", BeamSetRefPhase, METH_VARARGS, set_ref_phi__doc__},
@@ -1433,8 +1449,7 @@ static PyMemberDef BeamMembers[] = {
 };
 
 static PyTypeObject Beam_Type = {
-    PyObject_HEAD_INIT(NULL)
-    0, /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL,0)
     "Beam", /*tp_name*/
     sizeof(CPPClassObject), /*tp_basicsize*/
     0, /*tp_itemsize*/
@@ -1477,9 +1492,12 @@ static PyTypeObject Beam_Type = {
 PyMODINIT_FUNC initBeam(PyObject* module)
 {
   import_array();
-  if(PyType_Ready(&Beam_Type) < 0) return;
+  if(PyType_Ready(&Beam_Type) < 0) {
+    return NULL;
+  }
   Py_INCREF(&Beam_Type);
   PyModule_AddObject(module, "Beam", (PyObject*)&Beam_Type);
+  return module;
 }
 
 

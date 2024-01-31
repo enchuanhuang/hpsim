@@ -202,6 +202,52 @@ std::vector<std::string> RFAmplitudePVObserver::GetBeamLineElementNames() const
   return rlt; 
 }
 
+// Steerer added by En-Chuan Huang 2023/02/17
+SteererPVObserver::SteererPVObserver(std::string r_pv, std::string r_db)
+  : PVObserver(r_pv, r_db)
+{
+}
+
+void SteererPVObserver::AttachBeamLineElement(BeamLineElement* r_elem)
+{
+  if(Steerer* steerer = dynamic_cast<Steerer*>(r_elem))
+    steerer_ = steerer;
+  else
+  {
+    std::cerr << "Cann't attach " << r_elem->GetName() 
+      << " to a SteererPVObserver!" << std::endl;
+    exit(-1);
+  }
+}
+
+std::vector<std::string> SteererPVObserver::GetBeamLineElementNames() const
+{
+  std::vector<std::string> rlt(1, steerer_->GetName());
+  return rlt; 
+}
+
+// FIXME from here
+void SteererPVObserver::UpdateModel()
+{
+    std::string sql = "select bl_h_model, bl_v_model from " 
+            + GetDB() + ".steerer where name = '" + steerer_->GetName() + "'";
+    std::vector<std::vector<std::string> > data = GetQueryResults(GetDBconn(), 
+      sql.c_str());
+    if(!data.empty())
+    {
+      steerer_->SetIntegratedFieldHorizontal(std::atof(data[0][0].c_str()));
+      steerer_->SetIntegratedFieldVertical(std::atof(data[0][1].c_str()));
+    }
+    else
+      std::cerr << "SteererPVObserver::UpdateModel() failed, no bl_h_model "
+	"& bl_v_model were found for RFGap: " << steerer_->GetName() << std::endl;
+}
+
+// end of Steerer
+
+
+
+
 BuncherPVObserver::BuncherPVObserver(std::string r_pv, std::string r_db)
   : PVObserver(r_pv, r_db)
 {

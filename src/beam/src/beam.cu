@@ -11,10 +11,12 @@
 #include <iostream>
 #include <algorithm>
 #include <iterator>
+#include <vector>
 #include "beam_cu.h"
 #include "beam_kernel.cu"
 #include "timer.h"
 #include "utility.h"
+#include "MsgLog.h"
 
 /*!
  * \brief Allocate and initialize memory on device
@@ -23,6 +25,7 @@
  */
 void CreateBeamOnDevice(Beam* r_beam)
 {
+  MsgDebug(1, "CreateBeamOnDevice");
   uint num = r_beam->num_particle;
   cudaMalloc((void**)&r_beam->x, num*sizeof(double)); 
   cudaMalloc((void**)&r_beam->y, num*sizeof(double)); 
@@ -113,6 +116,7 @@ void CreateBeamOnDevice(Beam* r_beam)
  */
 void FreeBeamOnDevice(Beam* r_beam)
 {
+  MsgDebug(1, "FreeBeamOnDevice");
   cudaFree(r_beam->x);
   cudaFree(r_beam->y);
   cudaFree(r_beam->phi);
@@ -168,6 +172,7 @@ void FreeBeamOnDevice(Beam* r_beam)
  */
 void CreatePartialsOnDevice(Beam* r_beam, uint r_grid_size, uint r_blck_size)
 {
+  MsgDebug(1, "CreatePartialsOnDevice");
   cudaMalloc((void**)&r_beam->partial_int1,  sizeof(uint)*(r_grid_size+1));
   cudaMalloc((void**)&r_beam->partial_double2, sizeof(double)*(r_grid_size+1)*2);
   cudaMalloc((void**)&r_beam->partial_double3, sizeof(double)*(r_grid_size+1)*3);
@@ -198,6 +203,7 @@ void UpdateBeamOnDevice(Beam* r_beam, double* r_x_h, double* r_xp_h,
   double* r_y_h, double* r_yp_h, double* r_phi_h, double* r_w_h, 
   uint* r_loss_h, uint* r_lloss_h)
 {
+  MsgDebug(1, "UpdateBeamOnDevice");
   uint num = r_beam->num_particle;
   cudaMemcpy(r_beam->x, r_x_h, sizeof(double)*num, cudaMemcpyHostToDevice);
   cudaMemcpy(r_beam->xp, r_xp_h, sizeof(double)*num, cudaMemcpyHostToDevice);
@@ -228,6 +234,7 @@ void CopyBeamFromDevice(Beam* r_beam, double* r_x_h, double* r_xp_h,
   double* r_y_h, double* r_yp_h, double* r_phi_h, double* r_w_h, 
   uint* r_loss_h, uint* r_lloss_h, uint* r_num_loss_h)
 {
+  MsgDebug(1, "CopyBeamFromDevice");
   uint num = r_beam->num_particle;
   cudaMemcpy(r_x_h, r_beam->x, sizeof(double)*num, cudaMemcpyDeviceToHost);
   cudaMemcpy(r_xp_h, r_beam->xp, sizeof(double)*num, cudaMemcpyDeviceToHost);
@@ -252,6 +259,8 @@ void CopyParticleFromDevice(Beam* r_beam, uint r_index, double* r_x_h,
   double* r_xp_h, double* r_y_h, double* r_yp_h, double* r_phi_h, double* r_w_h,
   uint* r_loss_h, uint* r_lloss_h)
 {
+  MsgDebug(1, "CopyParticleFromDevice");
+
   cudaMemcpy(r_x_h, r_beam->x+r_index, sizeof(double), cudaMemcpyDeviceToHost);
   cudaMemcpy(r_xp_h, r_beam->xp+r_index, sizeof(double), cudaMemcpyDeviceToHost);
   cudaMemcpy(r_y_h, r_beam->y+r_index, sizeof(double), cudaMemcpyDeviceToHost);
@@ -640,7 +649,7 @@ void XX2ReduceKernelCall(uint r_block_size, uint r_grid_size, T* r_idata,
  *
  * \param r_beam Pointer to the beam
  * \param r_x Target beam coordinate
- * \pram r_x_sig[out] Target beam coordinate average
+ * \param r_x_sig[out] Target beam coordinate average
  * \param r_good_only If false(default), consider particles which are not 
  *                    transversely lost, otherwise, only consider good particles
  *                    which are not lost either transversely nor longitudinally.
@@ -651,6 +660,7 @@ void XX2ReduceKernelCall(uint r_block_size, uint r_grid_size, T* r_idata,
 void UpdateSigmaOfOneVariableKernelCall(Beam* r_beam, double* r_x, 
     double* r_x_sig, bool r_good_only)
 {
+
   //cudaEvent_t start, stop; 
   uint block_sz, grid_sz;
   uint num = r_beam->num_particle;
@@ -667,14 +677,15 @@ void UpdateSigmaOfOneVariableKernelCall(Beam* r_beam, double* r_x,
       r_beam, 0, r_good_only); 
     s = (s + (block_sz*2-1))/(block_sz*2);
   }
-
-  if(!r_good_only)
+  if(!r_good_only){
     UpdateVariableSigmaKernel<<<1, 1>>>(r_x_sig, partial1, 
                       partial1+1, num, r_beam->num_loss);
+  }
   else
     UpdateVariableSigmaWithLlossKernel<<<1, 1>>>(r_x_sig, partial1, partial1+1, 
                       r_beam->num_good);
   //StopTimer(&start, &stop, "new sig reducion kernel");
+  
 }
 
 

@@ -149,6 +149,24 @@ protected:
   std::vector<Drift*> drift_;
 };
 
+
+// Added by En-Chuan Huang on 2023/02/17
+class SteererPVObserver: public PVObserver
+{
+public:
+  SteererPVObserver(std::string, std::string);
+  virtual ~SteererPVObserver(){}
+  void AttachBeamLineElement(BeamLineElement*);
+  std::vector<std::string> GetBeamLineElementNames() const;
+protected:
+  virtual void UpdateModel();
+  //! List of dipole pointers controlled by the observer
+  Steerer* steerer_;
+};
+
+
+
+
 inline
 std::string PVObserver::GetPV() const
 {

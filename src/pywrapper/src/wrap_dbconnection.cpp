@@ -34,7 +34,9 @@ static int DBConnectionInit(CPPClassObject* self, PyObject* args, PyObject* kwds
 static void DBConnectionDel(CPPClassObject* self)
 {
   delete (DBConnection*)(self->cpp_obj);
-  self->ob_type->tp_free((PyObject*) self);
+  //self->ob_type->tp_free((PyObject*) self);
+  Py_TYPE(self)->tp_free((PyObject*) self); // EC: py37
+
 }
 
 PyDoc_STRVAR(load_lib__doc__,
@@ -134,8 +136,10 @@ static PyObject* DBConnectionGetEPICSChannels(PyObject* self, PyObject* args)
   if(pvs.empty())
     return NULL;
   PyObject* pv_lst = PyList_New(pvs.size());
-  for(int i = 0; i < pvs.size(); ++i)
-    PyList_SetItem(pv_lst, i, PyString_FromString(pvs[i].c_str())); 
+  for(int i = 0; i < pvs.size(); ++i){
+    //PyList_SetItem(pv_lst, i, PyString_FromString(pvs[i].c_str())); 
+    PyList_SetItem(pv_lst, i, PyUnicode_FromString(pvs[i].c_str())); 
+  }
   return pv_lst;
 }
 static PyMethodDef DBConnectionMethods[] = {
@@ -153,8 +157,7 @@ static PyMemberDef DBConnectionMembers[] = {
 };
 
 static PyTypeObject DBConnection_Type = {
-    PyObject_HEAD_INIT(NULL)
-    0, /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL,0)
     "DBConnection", /*tp_name*/
     sizeof(CPPClassObject), /*tp_basicsize*/
     0, /*tp_itemsize*/
@@ -196,9 +199,12 @@ static PyTypeObject DBConnection_Type = {
 
 PyMODINIT_FUNC initDBConnection(PyObject* module)
 {
-  if(PyType_Ready(&DBConnection_Type) < 0) return;
+  if(PyType_Ready(&DBConnection_Type) < 0) {
+    return NULL;
+  }
   Py_INCREF(&DBConnection_Type);
   PyModule_AddObject(module, "DBConnection", (PyObject*)&DBConnection_Type);
+  return module;
 }
 
 #ifdef _cplusplus

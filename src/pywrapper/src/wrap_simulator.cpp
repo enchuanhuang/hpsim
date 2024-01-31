@@ -18,7 +18,8 @@ static PyObject* SimulatorNew(PyTypeObject* type, PyObject* args, PyObject* kwds
 }
 
 PyDoc_STRVAR(simulator_init__doc__,
-"Simulator(beam = Beam, beamline = BeamLine, spch = SpaceChargeRoutine (optional))\n"
+"Simulator(beam = Beam, beamline = BeamLine, spch = SpaceChargeRoutine (optional),"
+"           plotdata = PlotData (optional))\n"
 "beam: a Beam object\n"
 "beamline: a BeamLine object\n"
 "spch (optional): a SpaceCharge object, if not defined, then no space charge is applied in the simulation.\n\n"
@@ -26,10 +27,10 @@ PyDoc_STRVAR(simulator_init__doc__,
 );
 static int SimulatorInit(CPPClassObject* self, PyObject* args, PyObject* kwds)
 {
-  PyObject* py_beam, *py_beamline, *py_spch = NULL;
-  static char *kwlist[] = {"beam", "beamline", "spch", NULL};
-  if(!PyArg_ParseTupleAndKeywords(args, kwds, "OO|O:__init__", kwlist, 
-                      &py_beam, &py_beamline, &py_spch))
+  PyObject* py_beam, *py_beamline, *py_spch, *py_plotdata = NULL;
+  static char *kwlist[] = {"beam", "beamline", "spch","plotdata", NULL};
+  if(!PyArg_ParseTupleAndKeywords(args, kwds, "OO|OO:__init__", kwlist, 
+                      &py_beam, &py_beamline, &py_spch, &py_plotdata))
   {
     std::cerr << "Simulator constructor needs at least a beam and beamline pointer as its args!"
               << std::endl;
@@ -38,6 +39,7 @@ static int SimulatorInit(CPPClassObject* self, PyObject* args, PyObject* kwds)
   PyObject* py_beam_type = getHPSimType("Beam");
   PyObject* py_beamline_type = getHPSimType("BeamLine");
   PyObject* py_spacecharge_type = getHPSimType("SpaceCharge");
+  PyObject* py_plotdata_type = getHPSimType("PlotData");
   if(PyObject_IsInstance(py_beam, py_beam_type) && 
      PyObject_IsInstance(py_beamline, py_beamline_type))
   {
@@ -46,9 +48,19 @@ static int SimulatorInit(CPPClassObject* self, PyObject* args, PyObject* kwds)
     SpaceCharge* scheff = NULL;
     if(py_spch != NULL && PyObject_IsInstance(py_spch, py_spacecharge_type)) 
       scheff = (SpaceCharge*)((CPPClassObject*)py_spch)->cpp_obj;
+
+    PlotData* plotdata = NULL;
+    if(py_plotdata != NULL && PyObject_IsInstance(py_plotdata, py_plotdata_type)) 
+      plotdata = (PlotData*)((CPPClassObject*)py_plotdata)->cpp_obj;                
+
     self->cpp_obj = new SimulationEngine();
     ((SimulationEngine*) self->cpp_obj)->SetWrapper((PyObject*) self);
-    ((SimulationEngine*) self->cpp_obj)->InitEngine(beam, beamline, scheff);
+    if(plotdata == NULL){
+      ((SimulationEngine*) self->cpp_obj)->InitEngine(beam, beamline, scheff);
+    }
+    else{
+      ((SimulationEngine*) self->cpp_obj)->InitEngine(beam, beamline, scheff, true, plotdata);
+    }
   }
   return 0;
 }
@@ -57,7 +69,9 @@ static void SimulatorDel(CPPClassObject* self)
 {
   SimulationEngine* engine = (SimulationEngine*)(self->cpp_obj);
   delete engine;
-  self->ob_type->tp_free((PyObject*) self);
+  //self->ob_type->tp_free((PyObject*) self);
+  Py_TYPE(self)->tp_free((PyObject*) self); // EC: py37
+
 }
 
 PyDoc_STRVAR(reset__doc__,
@@ -132,8 +146,7 @@ static PyMemberDef SimulatorMembers[] = {
 };
 
 static PyTypeObject Simulator_Type = {
-    PyObject_HEAD_INIT(NULL)
-    0, /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL,0) 
     "Simulator", /*tp_name*/
     sizeof(CPPClassObject), /*tp_basicsize*/
     0, /*tp_itemsize*/
@@ -175,9 +188,12 @@ static PyTypeObject Simulator_Type = {
 
 PyMODINIT_FUNC initSimulator(PyObject* module)
 {
-  if(PyType_Ready(&Simulator_Type) < 0) return;
+  if(PyType_Ready(&Simulator_Type) < 0) {
+    return NULL;
+  }
   Py_INCREF(&Simulator_Type);
   PyModule_AddObject(module, "Simulator", (PyObject*)&Simulator_Type);
+  return module;
 }
 
 

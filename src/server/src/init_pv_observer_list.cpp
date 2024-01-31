@@ -45,12 +45,12 @@ void InitPVObserverList(PVObserverList& r_pvlist, BeamLine& r_bl,
               r_pvlist.AddPVObserver(pv, new RFPhasePVObserver(pv, db));
             else if(pv_type == "rf_amp" || pv_type == "delay") 
               r_pvlist.AddPVObserver(pv, new RFAmplitudePVObserver(pv, db));
-	    else if(pv_type == "rf_ph_master")
-	    {
-	      MasterPVObserver* amaster = new MasterPVObserver(pv, db);
+	          else if(pv_type == "rf_ph_master")
+	          {
+	            MasterPVObserver* amaster = new MasterPVObserver(pv, db);
               r_pvlist.AddPVObserver(pv, amaster);
-	      masters[amaster] = std::vector<std::string>();
-	    }
+	            masters[amaster] = std::vector<std::string>();
+	          }
           }
           else if(elem_type == "buncher")
           {
@@ -64,6 +64,8 @@ void InitPVObserverList(PVObserverList& r_pvlist, BeamLine& r_bl,
           }
           else if(elem_type == "dipole")
             r_pvlist.AddPVObserver(pv, new DipolePVObserver(pv, db));
+          else if(elem_type == "steerer")
+            r_pvlist.AddPVObserver(pv, new SteererPVObserver(pv, db));
 	  if(r_verbose)
 	    std::cout << "---------- Add PV: " << pv << std::endl;
         } // if r_pvlist

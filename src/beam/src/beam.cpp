@@ -6,9 +6,11 @@
 #include <ctime>
 #include <algorithm>
 #include <iterator>
+#include "stdio.h"
 #include "beam.h"
 #include "beam_cu.h"
 #include "utility.h"
+#include "MsgLog.h"
 
 /*!
  * \brief Contructor.
@@ -714,6 +716,8 @@ void Beam::PrintSimple()
 {
   std::cout << "Beam, mass = " << mass << ", charge = " << charge << 
     ", current = " << current << std::endl;
+  std::cout << "printing 0th, n/2-1, n-2 particle" << std::endl;
+  std::cout << "x, xp, y, yp, phi, w, loss, lloss" << std::endl;
   Print(0);
   Print(num_particle / 2 - 1);
   Print(num_particle - 2);

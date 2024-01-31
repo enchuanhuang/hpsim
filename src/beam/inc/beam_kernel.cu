@@ -11,6 +11,7 @@
 #define BEAM_KERNEL_CU
 #include "constant.h"
 #include <cstdio>
+#include <stdio.h>
 
 /*!
  * \brief Utility class used to avoid linker errors with extern
@@ -1517,6 +1518,7 @@ void UpdateRelativePhiKernel(double* r_phi_r, double* r_phi, double* r_ref_phi,
       sign = -1.0;
       tmp = -tmp;
     }
+    // relative phase is rewrapped into 2pi range.
     r_phi_r[index] = sign * (fmod(tmp, TWOPI) - PI);
   }     
 } 

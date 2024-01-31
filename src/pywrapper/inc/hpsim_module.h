@@ -4,7 +4,7 @@
 #ifdef _cplusplus
 extern "C" {
 #endif
-PyMODINIT_FUNC initHPSim();
+PyMODINIT_FUNC PyInit_HPSim();
 PyObject* getHPSimType(char* name);
 #ifdef _cplusplus
 }
