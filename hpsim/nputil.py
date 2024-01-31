@@ -53,7 +53,7 @@ def remove_zeros(xy):
         mask = np.where((xy[:, __X] != 0.0) & (xy[:, __Y] != 0.0))[0]
         return xy[mask, :]
     else:
-        print "nputil.remove_zeros can't process input array"
+        print("nputil.remove_zeros can't process input array")
         exit()
 
 def remove_zero_pairs(xy):
@@ -81,7 +81,7 @@ def apply_threshold_old(xy, thres):
         mask = np.where(xy[:, __Y] >= thres)[0]
         return xy[mask, :]
     else:
-        print "nputil.apply_threshold can't process input array"
+        print("nputil.apply_threshold can't process input array")
         exit()
 
 def apply_threshold(xy, thres):
@@ -103,7 +103,7 @@ def apply_threshold(xy, thres):
         temp[mask, :] = xy[mask, :]
         return temp
     else:
-        print "nputil.apply_threshold can't process input array"
+        print("nputil.apply_threshold can't process input array")
         exit()
 
 def apply_limits(xy, limits):
@@ -124,7 +124,7 @@ def apply_limits(xy, limits):
             mask = np.where((xy[:, __X] >= limits[0]) & (xy[:, __X] <= limits[1]))[0]
             return xy[mask, :]
         else:
-            print "nputil.apply_limits can't process input array"
+            print("nputil.apply_limits can't process input array")
             exit()
     else:
         return xy
@@ -245,7 +245,7 @@ def get_halfmax_x(xy, half):
         inc = +1
         stop_ind = len(xy)
     else:
-        print "half argument must be either lower/left or upper/right"
+        print("half argument must be either lower/left or upper/right")
         sys.stop()
     halfmax = 0.5 * get_max_val(xy)
     for i in range(max_index, stop_ind, inc):
@@ -253,7 +253,7 @@ def get_halfmax_x(xy, half):
             j=i
             break
     else: #loop fell through without finding halfmax
-        print "could not find " + half + "half max point"
+        print("could not find " + half + "half max point")
         return float("nan")
 
     x1 = xy[j][__X]

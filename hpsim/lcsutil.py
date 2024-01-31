@@ -1,6 +1,18 @@
 # lcsutil_v2.py
 # Collection of python functions for accessing LANSCE Control System (LCS) info
 # 20160223 - ljr - code cleanup
+LAST_MODULE_WITH_DLLRF = 24 #this should be the last module that has dLLRF installed
+SECTORS = {"J": ["TA", "TB", "TD"],
+           "B": [f"{i:02d}" for i in range(5,11)],
+           "C": [f"{i:02d}" for i in range(11,18)],
+           "D": [f"{i:02d}" for i in range(18,25)],
+           "E": [f"{i:02d}" for i in range(25,31)],
+           "F": [f"{i:02d}" for i in range(31,37)],
+           "G": [f"{i:02d}" for i in range(37,43)],
+           "H": [f"{i:02d}" for i in range(43,49)],
+           "SY": ["SY"],
+           }
+SECTORS_MAP = {part:sec for sec, parts in SECTORS.items() for part in parts}
 
 def expand_pv(pv):
     """ Returns the LCS Process Variable in full syntax AADDDNNNCMM as a string
@@ -94,11 +106,18 @@ def get_pv_psp(n, beam='+'):
     elif ns == 'TD' or ns == 'MB':
         psp = expand_pv('tddb1e2')
     elif ns in ['T1', 'T2', 'T3', 'T4']:
-        psp = expand_pv(ns[1].zfill(2)+'js1d2')
+        #psp = expand_pv(ns[1].zfill(2)+'js1d2') # analog system
+        # string below generates error due to ...
+        # https://stackoverflow.com/questions/36044676/text-formatting-error-alignment-not-allowed-in-string-format-specifier
+        psp = expand_pv(ns[1].zfill(2)+'ML001P00') #updated for dLLRF #'js1d2')
     elif int(ns) < 5:
-        psp = expand_pv(ns+'js1d2')
+        psp = expand_pv(ns+"ML1P0")
     elif int(ns) > 4:
-        psp = expand_pv(ns+'ks1e1')
+        if(int(ns) <= LAST_MODULE_WITH_DLLRF):
+            psp = expand_pv(ns + 'ML001P00')
+        else:
+            psp = expand_pv(ns+'ks1e1')
+
     return psp
 
 def get_pos_beams():
@@ -132,13 +151,18 @@ def get_pv_asp(n, beam='+'):
         elif beam in get_neg_beams():
             asp = expand_pv('tddb1e4')
         else:
-            "Beam must be either", pos, " or ", neg
+            "Beam must be either + or -"
     elif ns in ['T1', 'T2', 'T3', 'T4']:
-        asp = expand_pv(ns[1].zfill(2)+'js1d1')
+        asp = expand_pv(ns[1].zfill(2)+'ML001A00') #update for dLLRF #'js1d1')
     elif int(ns) < 5:
-        asp = expand_pv(ns+'js1d1')
+        #asp = expand_pv(ns+'js1d1') # analog
+        asp = expand_pv(ns+'ML001A00')
     elif int(ns) > 4:
-        asp = expand_pv(ns+'ks1e2')
+        if(int(ns) <= LAST_MODULE_WITH_DLLRF):
+            asp = expand_pv(ns + 'ML001A00')
+        else:
+            asp = expand_pv(ns+'ks1e2')
+            
     return asp
 
 def get_pv_asp_n(n):
