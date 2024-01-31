@@ -1,1 +1,40 @@
-bin
+# distribution / packaging directories
+bin/
+build/
+dist/
+develop-eggs/
+eggs/
+.eggs/
+*egg-info
+wheels/
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# vscode project
+.vscode
+
+# C extensions
+*.so
+
+# temp files
+db/tmp
+*.bak
+*.temp
+*.pyc
+*.swp
+*~
+
