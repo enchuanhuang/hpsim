@@ -1,0 +1,23 @@
+CC=nvcc
+CXX=nvcc
+PROJECT_ROOT:=$(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+
+EPICS_INC_FLAGS=-I/epics/base/include/os/Linux -I/epics/base/include -D_POSIX_C_SOURCE=199506L -D_POSIX_THREADS -D_XOPEN_SOURCE=500 -D_X86_64_  -DUNIX  -D_BSD_SOURCE -Dlinux  -D_REENTRANT -m64
+
+EPICS_LD_FLAGS=-L/epics/base/lib/linux-x86_64 -lcas -lgdd -lasHost -ldbStaticHost -lregistryIoc -lca -lCom -lpthread -lreadline -lncurses -lm -lrt -ldl -lgcc
+
+PYTHON_INC_FLAGS=$(shell python-config --includes) $(shell python -c "import numpy; print '-I' + numpy.get_include() + '/numpy'")
+
+PYTHON_LD_FLAGS=$(shell python-config --libs) $(shell python -c "import numpy; print '-L' + numpy.__path__[0] + 'core/lib'")
+
+#GL_LD_FLAGS+=-lglut -lGLU -lGLEW 
+GL_LD_FLAGS+=-L$(PROJECT_ROOT)/lib -lglut -lGLEW_x86_64 -lGLU
+
+CPPFLAGS+=-arch=sm_35 -Xcompiler '-fPIC' -Xcompiler '-fopenmp' -O3 \
+  -g -w #-DDOUBLE_PRECISION #-D_DEBUG
+
+CPPFLAGS+=$(EPICS_INC_FLAGS)
+CPPFLAGS+=$(PYTHON_INC_FLAGS)
+#CPPFLAGS+=-Xptxas -v -Xptxas -dlcm=ca
+
+LDFLAGS=-lcurand -lsqlite3

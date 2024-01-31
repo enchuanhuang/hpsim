@@ -1,29 +1,38 @@
-CC=nvcc
+CC=$(CUDA_PATH)/bin/nvcc -ccbin g++
 CXX=nvcc
 PROJECT_ROOT:=$(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 
-EPICS_INC_FLAGS=-I/ade/epics/supTop/base/R3.14.11/include/os/Linux \
-  -I/ade/epics/supTop/base/R3.14.11/include -D_POSIX_C_SOURCE=199506L \
-  -D_POSIX_THREADS -D_XOPEN_SOURCE=500 -D_X86_64_ -DUNIX -D_BSD_SOURCE \
-  -Dlinux -D_REENTRANT -m64 
+PYTHON_INC_FLAGS=$(shell python3-config --includes) 
+PYTHON_INC_FLAGS+=$(shell python -c "import numpy; print('-I' + numpy.get_include() + '/numpy')")
 
-EPICS_LD_FLAGS=-L/ade/epics/supTop/base/R3.14.11/lib/linux-x86_64 \
-  -lcas -lgdd -lasHost -ldbStaticHost -lregistryIoc -lca -lCom \
-  -lpthread -lreadline -lncurses -lm -lrt -ldl -lgcc
+PYTHON_LD_FLAGS=$(shell python3-config --ldflags) 
+PYTHON_LD_FLAGS+=$(shell python -c "import numpy; print('-L' + numpy.__path__[0] + 'core/lib')")
 
-PYTHON_INC_FLAGS=-I/usr/local/include/python2.7 \
-  -I/usr/local/lib/python2.7/site-packages/numpy/core/include/numpy
+# These flags point to the location of a shared Glew library but are not used in the subsequent compilation
+#GL_LD_FLAGS+=-lglut -lGLU -lGLEW 
+GL_LD_FLAGS+=-L$(PROJECT_ROOT)/lib -lglut -lGLEW_x86_64 -lGLU
 
-PYTHON_LD_FLAGS=-L./usr/local/lib/ \
-  -L/usr/local/lib/python2.7/site-packages/numpy/core/lib -lpython2.7 
+CPPFLAGS+=-I$(CONDA_PREFIX)/include/
 
-GL_LD_FLAGS+=-lglut -lGLU -lGLEW 
+#CPPFLAGS+= -m64
+CPPFLAGS+= -gencode arch=compute_35,code=sm_35 
+CPPFLAGS+= -gencode arch=compute_37,code=sm_37 
+CPPFLAGS+= -gencode arch=compute_50,code=sm_50 
+CPPFLAGS+= -gencode arch=compute_52,code=sm_52 
+CPPFLAGS+= -gencode arch=compute_60,code=sm_60 
+CPPFLAGS+= -gencode arch=compute_61,code=sm_61 
+CPPFLAGS+= -gencode arch=compute_70,code=sm_70 
+CPPFLAGS+= -gencode arch=compute_75,code=sm_75 
+CPPFLAGS+= -gencode arch=compute_80,code=sm_80
+CPPFLAGS+= -gencode arch=compute_86,code=sm_86
+CPPFLAGS+= -gencode arch=compute_86,code=compute_86
 
-CPPFLAGS+=-arch=sm_35 -Xcompiler '-fPIC' -Xcompiler '-fopenmp' -O3 \
-  -g -w #-DDOUBLE_PRECISION #-D_DEBUG
+CPPFLAGS+= -Xcompiler '-fPIC' -Xcompiler '-fopenmp' -O3 
+CPPFLAGS+= -Wno-deprecated-gpu-targets
+CPPFLAGS+= -g -w #-DDOUBLE_PRECISION #-D_DEBUG
 
-CPPFLAGS+=$(EPICS_INC_FLAGS)
 CPPFLAGS+=$(PYTHON_INC_FLAGS)
 #CPPFLAGS+=-Xptxas -v -Xptxas -dlcm=ca
 
 LDFLAGS=-lcurand -lsqlite3
+LDFLAGS+=-L$(CONDA_PREFIX)/lib/

@@ -1,6 +1,0 @@
-db: ../../db/online-tbtd.db ../../db/online-dtl.db ../../db/online-trst.db ../../db/online-ccl.db
-libdb: ../../db/lib/libsqliteext.so
-beam: ./input_beam.txt
-start: TBDB02
-end: 48DT
-server: off
