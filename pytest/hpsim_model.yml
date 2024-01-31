@@ -1,0 +1,33 @@
+basic:
+  GPU : 1
+  log_level : 3 # 0: CRITICAL, ERROR, WARNING, INFO, DEBUG
+  debug_level : 1 # used for C++.
+
+
+beam:
+  num : 262144  # number of particles
+  mass : 939.294 # H- mass
+  charge : -1.0   # H+
+  current : 0.006 # [A]
+  alpha_x : 0.095 # 
+  beta_x  : 47   # caluate under cm & rad. See tutorial/LEBT_beam_initialization
+  emittance_x : 0.00327 # 6 rms
+  alpha_y : -0.102
+  beta_y : 60.0
+  emittance_y : 0.002514
+  delta_phi : 180  # [deg]
+  synch_phi : 0    # [deg]
+  synch_w   : 0.7518 # [MeV]
+  random_seed : 123
+
+simulation:
+  SIM_START : "TBDB02"
+  SIM_STOP : "TREM01"
+
+database:
+  db_dir : "../db/"
+  tmpdir : "../db/tmp/"
+  dbs : ['tbtd.db', "trst.db", "dtl.db", "ccl.db"]
+
+monitor:
+  devices : ["QL", "QM","QD","EM", "AB","CM", "DT", "PM", "WS"]

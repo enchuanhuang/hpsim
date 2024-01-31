@@ -5,8 +5,10 @@
 #
 import sys
 import os
-from pathlib import Path
-# define directory to packages and append to $PATH
+
+par_dir = os.path.abspath(os.path.pardir)
+lib_dir = os.path.join(par_dir,"bin")
+pkg_dir = os.path.join(par_dir,"pylib")
 
 #import additional python packages
 import numpy as np
@@ -24,12 +26,16 @@ import hpsim.sqldb as pydb
 
 
 
+SIM_START = "TBDB02" #defined by input beam location
+SIM_STOP = 'SYDT'
+ENERGY_CUTOFF = 750.0
+
 ################################################################################
 # install db's and connect to beamline
-par_dir = Path(hps.__path__[0]).parent
-db_dir = par_dir / 'db'
-lib_dir = par_dir / 'db/lib'
+db_dir = par_dir + '/db'
+lib_dir = par_dir + '/db/lib'
 dbs = ['tbtd.db','dtl.db','trst.db','ccl.db']
+#dbs = ['tbtd.db','digital-dtl.db','trst.db','digital-ccl.db']
 dbconn1 = hps.DBConnection(db_dir, dbs, lib_dir, 'libsqliteext.so')
 dbconn1.print_dbs()
 dbconn1.clear_model_index()
@@ -52,10 +58,9 @@ for item in py_beamline:
 
 ################################################################################
 # create H- beam
-SIM_START = "TBDB02" #defined by input beam location
 #beam = hps.Beam(mass=939.294, charge=-1.0, current=0.015, num=1024*256) #H- beam
 beam = hps.Beam(mass=939.294, charge=-1.0, current=0.015, num=1024*1024) #H- beam
-beam.set_dc(0.095, 47.0, 0.00327,  -0.102, 60.0, 0.002514, 180.0, 0.0, 0.7518) #TBDB02 20140901
+beam.set_dc(0.095, 47.0, 0.00327,  -0.102, 60.0, 0.002514, 180.0, 0.0, 0.7518, random_seed=123) #TBDB02 20140901
 beam.set_frequency(201.25)
 betalambda = hps.betalambda(mass = beam.get_mass(), freq=beam.get_frequency(), w=0.750)
 phi_offset = -hps.get_beamline_length(SIM_START,'BLZ')/betalambda *360
@@ -88,8 +93,8 @@ print("*** Simulator Initialized ***")
 # STANDARD AND REQUIRED STUFF ABOVE THIS LINE
 ################################################################################
 
-SIM_STOP = '05DT'
-ENERGY_CUTOFF = 100.0
+
+
 mask = gmask = beam.get_good_mask()
 
 print("*** Input Beam ***")
@@ -111,11 +116,6 @@ print(SIM_STOP)
 print("w/user units")
 beam.print_results(mask)
 
-# obtain data
-dfbeam = beam.data
-print("particle information (head):")
-print(dfbeam.head(), "\n")
-
 # create output plot
 plot = hps.BeamPlot(nrow=4, ncol=3, hsize=16, vsize=12)
 plot.title(SIM_STOP)
@@ -132,4 +132,5 @@ plot.profile('xp', beam, mask, 10, 'g-')
 plot.profile('yp', beam, mask, 11, 'g-')
 plot.profile('w', beam, mask, 12, 'g-')
 plot.show()
+plot.fig.savefig("benchmark.png")
 #exit()
